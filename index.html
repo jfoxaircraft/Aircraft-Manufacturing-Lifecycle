@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Aircraft Manufacturing Workflow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF7;
+            color: #3D4852;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 450px;
+            max-height: 50vh;
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active {
+            color: #2B6CB0;
+            border-bottom-color: #2B6CB0;
+            font-weight: 600;
+        }
+        .phase-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .phase-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .gemini-button {
+            background-color: #4A90E2;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .gemini-button:hover {
+            background-color: #357ABD;
+        }
+         .gemini-button-small {
+            background-color: #60A5FA;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .gemini-button-small:hover {
+            background-color: #3B82F6;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header id="main-header" class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-center h-16">
+                <div id="nav-links" class="flex space-x-2 sm:space-x-4 md:space-x-6 text-xs sm:text-sm text-gray-600 font-medium">
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <section class="text-center my-8 md:my-12">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-800 tracking-tight">Aircraft Manufacturing Lifecycle</h1>
+            <p class="mt-4 max-w-3xl mx-auto text-base sm:text-lg text-gray-600">
+                An interactive overview of the standard phases in an aircraft production project. This application visualizes the entire process, from initial concept to post-delivery support. Use the navigation above to jump to a specific phase or scroll to explore the journey. Now with AI-powered insights! ✨
+            </p>
+        </section>
+
+        <section id="chart-section" class="my-12 md:my-16">
+            <h2 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-2">Estimated Phase Durations</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">This chart provides a comparative look at the hypothetical duration for each major phase of the aircraft manufacturing lifecycle. This visualization helps in understanding the relative complexity and time investment required at each stage. Hover over any bar to see the specific details.</p>
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
+                <div class="chart-container">
+                    <canvas id="phasesChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="workflow-details" class="my-12 md:my-16">
+             <h2 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-2">Detailed Workflow Browser</h2>
+             <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">Here you can explore the specific tasks and objectives for each phase of the manufacturing process. Each card represents a key stage, detailing the critical activities involved in taking an aircraft from an idea to a fully operational machine with life-long support. Use the ✨ buttons for AI-generated elaborations and risk assessments.</p>
+             <div id="phases-container" class="space-y-16">
+             </div>
+        </section>
+    </main>
+    
+    <footer class="bg-gray-800 text-white mt-16">
+        <div class="container mx-auto py-6 px-4 text-center text-sm">
+            <p>Interactive Aircraft Manufacturing Workflow | by JFOX Aircraft</p>
+        </div>
+    </footer>
+
+    <div id="geminiModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal('geminiModal')">&times;</span>
+            <h3 id="geminiModalTitle" class="text-xl font-semibold mb-4">AI Powered Insights</h3>
+            <div id="geminiModalBody" class="text-sm text-gray-700 leading-relaxed">
+                <div class="loader"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="stepElaborationModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal('stepElaborationModal')">&times;</span>
+            <h3 id="stepElaborationModalTitle" class="text-xl font-semibold mb-4">Elaborate on Steps</h3>
+            <div id="stepElaborationModalBody" class="text-sm text-gray-700 leading-relaxed">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const workflowData = [
+                {
+                    phase: 0,
+                    title: "Project Initiation & Conceptualization",
+                    objective: "Define the project scope, feasibility, and high-level requirements.",
+                    duration: 6,
+                    icon: '🚀',
+                    steps: [
+                        "Market Analysis & Needs Assessment",
+                        "Feasibility Study (Technical, Economic, Operational)",
+                        "Conceptual Design & Configuration",
+                        "High-Level Requirements Definition",
+                        "Preliminary Project Planning & Risk Assessment",
+                        "Regulatory Pathway Identification"
+                    ]
+                },
+                {
+                    phase: 1,
+                    title: "Detailed Design & Engineering",
+                    objective: "Develop a complete and validated design package for the aircraft and its components.",
+                    duration: 24,
+                    icon: '📐',
+                    steps: [
+                        "Detailed Engineering Design (Airframe, Systems, Interior)",
+                        "Material Selection & Qualification",
+                        "Simulation & Analysis (CFD, FEA)",
+                        "Prototyping of critical components",
+                        "Design Reviews (PDR, CDR) & Verification",
+                        "Initial Production Planning"
+                    ]
+                },
+                {
+                    phase: 2,
+                    title: "Tooling, Manufacturing & Procurement",
+                    objective: "Produce or procure all necessary parts and sub-assemblies according to the design specifications.",
+                    duration: 18,
+                    icon: '🛠️',
+                    steps: [
+                        "Tooling Design & Fabrication (Jigs, Molds, Fixtures)",
+                        "Supplier Selection & Supply Chain Management",
+                        "Component Manufacturing (In-house or Outsourced)",
+                        "Procurement of Off-the-Shelf Components (Engines, Avionics)",
+                        "Sub-Assembly of modules (e.g., wing sections)",
+                        "Quality Control & Non-Destructive Testing (NDT)"
+                    ]
+                },
+                {
+                    phase: 3,
+                    title: "Aircraft Assembly & Integration",
+                    objective: "Assemble the manufactured and procured components into a complete aircraft and integrate all systems.",
+                    duration: 12,
+                    icon: '✈️',
+                    steps: [
+                        "Major Airframe Assembly (Fuselage, Wings, Empennage)",
+                        "Landing Gear & Powerplant Installation",
+                        "Systems Installation & Integration (Wiring, Plumbing, Avionics)",
+                        "Functional Testing of Sub-systems",
+                        "Aircraft Painting & Livery Application",
+                        "Final Assembly Checks & Weight/Balance Measurement"
+                    ]
+                },
+                {
+                    phase: 4,
+                    title: "Ground & Flight Testing",
+                    objective: "Verify the aircraft's performance, safety, and compliance with design and regulatory requirements.",
+                    duration: 12,
+                    icon: '🧪',
+                    steps: [
+                        "Ground Testing (System Integration, Engine Run-ups, Taxi Tests)",
+                        "First Flight Preparation & Readiness Reviews",
+                        "Flight Test Program (Envelope Expansion, Performance, Handling)",
+                        "Specialized Tests (Flutter, Stall, Emergency Procedures)",
+                        "Data Acquisition & Analysis",
+                        "Iterative Refinement based on test results"
+                    ]
+                },
+                {
+                    phase: 5,
+                    title: "Certification & Regulatory Compliance",
+                    objective: "Obtain all necessary certifications from airworthiness authorities to allow for commercial operation or sale.",
+                    duration: 18,
+                    icon: '📜',
+                    steps: [
+                        "Documentation Preparation & Submission to Authorities (FAA, EASA)",
+                        "Authority Inspections & Audits",
+                        "Conformity Demonstrations",
+                        "Issuance of Type Certificate (for new designs)",
+                        "Issuance of Certificate of Airworthiness (for each aircraft)",
+                        "Issuance of Production Certificate (for manufacturer)"
+                    ]
+                },
+                {
+                    phase: 6,
+                    title: "Production Ramp-up & Delivery",
+                    objective: "Transition from prototype/low-rate production to full-scale manufacturing and deliver aircraft to customers.",
+                    duration: 24,
+                    icon: '🏭',
+                    steps: [
+                        "Production Line Setup & Optimization",
+                        "Quality Assurance in Full-Scale Production",
+                        "Customer Acceptance Flights & Inspections",
+                        "Final Documentation Handover (Manuals, Logs)",
+                        "Aircraft Delivery or Entry into Service"
+                    ]
+                },
+                {
+                    phase: 7,
+                    title: "Post-Delivery Support & Improvement",
+                    objective: "Provide ongoing support to operators and gather feedback for future improvements.",
+                    duration: 120,
+                    icon: '🔧',
+                    steps: [
+                        "Entry Into Service & Warranty Support",
+                        "Maintenance, Repair, and Overhaul (MRO) Support",
+                        "Spare Parts Provisioning & Logistics",
+                        "Pilot & Maintenance Crew Training",
+                        "Continuous Airworthiness Monitoring & Service Bulletins",
+                        "Product Improvement & Upgrade Programs"
+                    ]
+                }
+            ];
+
+            const navLinksContainer = document.getElementById('nav-links');
+            const phasesContainer = document.getElementById('phases-container');
+            const sections = [];
+
+            function openModal(modalId) {
+                document.getElementById(modalId).style.display = 'flex';
+            }
+
+            window.closeModal = function(modalId) {
+                document.getElementById(modalId).style.display = 'none';
+                if (modalId === 'geminiModal') {
+                     document.getElementById('geminiModalBody').innerHTML = '<div class="loader"></div>';
+                }
+            }
+            
+            window.onclick = function(event) {
+                if (event.target.classList.contains('modal')) {
+                    closeModal(event.target.id);
+                }
+            }
+
+            async function fetchGeminiData(prompt, modalBodyId, modalTitleId, title) {
+                const modalBody = document.getElementById(modalBodyId);
+                const modalTitle = document.getElementById(modalTitleId);
+                
+                modalTitle.textContent = title;
+                modalBody.innerHTML = '<div class="loader"></div>'; 
+                openModal(modalBody.closest('.modal').id);
+
+                try {
+                    let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; 
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${response.status} ${errorData.error?.message || 'Unknown error'}`);
+                    }
+                    
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        let text = result.candidates[0].content.parts[0].text;
+                        text = text.replace(/\n/g, '<br>');
+                        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
+                        text = text.replace(/\*(.*?)\*/g, '<em>$1</em>'); 
+                        modalBody.innerHTML = `<div class="prose prose-sm max-w-none">${text}</div>`;
+                    } else {
+                        modalBody.innerHTML = 'No content received from AI. Please try again.';
+                    }
+                } catch (error) {
+                    console.error("Error fetching Gemini data:", error);
+                    modalBody.innerHTML = `Error: Could not retrieve information. ${error.message}`;
+                }
+            }
+
+            window.generateRisks = function(phaseIndex) {
+                const phase = workflowData[phaseIndex];
+                const prompt = `List potential risks associated with the '${phase.title}' phase of aircraft manufacturing. For each risk, briefly describe it and suggest a potential mitigation strategy. Format the output clearly.`;
+                fetchGeminiData(prompt, 'geminiModalBody', 'geminiModalTitle', `Potential Risks for: ${phase.title}`);
+            }
+
+            window.elaborateStep = function(phaseTitle, stepName) {
+                const prompt = `Explain the following step in aircraft manufacturing in detail: "${stepName}" (within the phase '${phaseTitle}'). Focus on its importance, typical activities involved, and common challenges. Provide a concise yet comprehensive explanation.`;
+                 fetchGeminiData(prompt, 'geminiModalBody', 'geminiModalTitle', `Details for: ${stepName}`);
+            }
+
+            window.openStepElaboration = function(phaseIndex) {
+                const phase = workflowData[phaseIndex];
+                const modalBody = document.getElementById('stepElaborationModalBody');
+                const modalTitle = document.getElementById('stepElaborationModalTitle');
+
+                modalTitle.textContent = `Elaborate on Steps: ${phase.title}`;
+                let stepsHtml = '<ul class="space-y-3">';
+                phase.steps.forEach(step => {
+                    stepsHtml += `<li class="flex justify-between items-center">
+                                    <span>${step}</span>
+                                    <button class="gemini-button-small" onclick="elaborateStep('${phase.title}', '${step.replace(/'/g, "\\'")}')">Explain ✨</button>
+                                 </li>`;
+                });
+                stepsHtml += '</ul>';
+                modalBody.innerHTML = stepsHtml;
+                openModal('stepElaborationModal');
+            }
+
+
+            workflowData.forEach(phaseData => {
+                const navLink = document.createElement('a');
+                navLink.href = `#phase-${phaseData.phase}`;
+                navLink.textContent = `Phase ${phaseData.phase}`;
+                navLink.className = 'nav-link px-2 sm:px-3 py-2 rounded-md';
+                navLink.dataset.phase = phaseData.phase;
+                navLinksContainer.appendChild(navLink);
+
+                const section = document.createElement('section');
+                section.id = `phase-${phaseData.phase}`;
+                section.className = 'phase-section pt-20 -mt-20';
+                let stepsHtml = phaseData.steps.map(step => 
+                    `<li class="flex items-start space-x-3">
+                        <svg class="h-6 w-6 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>${step}</span>
+                    </li>`
+                ).join('');
+
+                let geminiButtonsHtml = `<button class="gemini-button mt-4" onclick="openStepElaboration(${phaseData.phase})">Elaborate on Steps ✨</button>`;
+                if (phaseData.phase === 0) {
+                    geminiButtonsHtml += `<button class="gemini-button mt-4 ml-2" onclick="generateRisks(${phaseData.phase})">Generate Potential Risks ✨</button>`;
+                }
+
+
+                section.innerHTML = `
+                    <div class="phase-card bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200/50">
+                        <div class="flex items-center mb-4">
+                            <span class="text-4xl mr-4">${phaseData.icon}</span>
+                            <div>
+                                <h3 class="text-xl sm:text-2xl font-bold text-gray-900">${phaseData.phase}: ${phaseData.title}</h3>
+                                <p class="text-sm sm:text-base text-gray-500 italic mt-1">${phaseData.objective}</p>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-200 mt-6 pt-6">
+                            <ul class="space-y-4 text-gray-700">
+                                ${stepsHtml}
+                            </ul>
+                        </div>
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            ${geminiButtonsHtml}
+                        </div>
+                    </div>
+                `;
+                phasesContainer.appendChild(section);
+                sections.push(section);
+            });
+
+            const ctx = document.getElementById('phasesChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: workflowData.map(p => `P${p.phase}: ${p.title.split(' ')[0]}`),
+                    datasets: [{
+                        label: 'Estimated Duration (Months)',
+                        data: workflowData.map(p => p.duration),
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                        hoverBackgroundColor: 'rgba(59, 130, 246, 0.8)'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Duration in Months',
+                                font: { size: 14 }
+                            },
+                            ticks: { font: { size: 12 } }
+                        },
+                        y: {
+                             ticks: { font: { size: 12 } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                             backgroundColor: 'rgba(0,0,0,0.7)',
+                             titleFont: { size: 14 },
+                             bodyFont: { size: 12 },
+                             padding: 10,
+                             callbacks: {
+                                label: function(context) {
+                                    let label = workflowData[context.dataIndex].title || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.x !== null) {
+                                        label += `${context.parsed.x} months`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
+                        });
+                    }
+                });
+            }, { rootMargin: "-50% 0px -50% 0px" });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+
+</body>
+</html>
